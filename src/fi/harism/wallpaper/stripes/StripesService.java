@@ -72,8 +72,6 @@ public final class StripesService extends WallpaperService {
 		private final float mAspectRatio[] = new float[2];
 		// GLSurfaceView implementation.
 		private StripesSurfaceView mGLSurfaceView;
-		// Screen width and height.
-		private int mWidth, mHeight;
 
 		@Override
 		public void onCreate(SurfaceHolder surfaceHolder) {
@@ -120,13 +118,17 @@ public final class StripesService extends WallpaperService {
 		private final class StripesSurfaceView extends GLSurfaceView implements
 				GLSurfaceView.Renderer {
 
+			// Spline quality value.
 			private static final int SPLINE_VERTEX_COUNT = 20;
+			// Buffers for vertices.
 			private ByteBuffer mBufferQuad;
 			private FloatBuffer mBufferSpline;
 			// Boolean value for indicating if shader compiler is supported.
 			private final boolean mShaderCompilerSupported[] = new boolean[1];
+			// Shader program ids.
 			private int mShaderQuad = 0;
 			private int mShaderStripe = 0;
+			// Stripe data.
 			private final long mStripes[][] = new long[4][];
 
 			/**
@@ -179,7 +181,8 @@ public final class StripesService extends WallpaperService {
 			 *            Fragment shader source.
 			 * @return Shader program id.
 			 */
-			private final int loadProgram(String vs, String fs) {
+			private final int loadProgram(String vs, String fs)
+					throws Exception {
 				int vertexShader = loadShader(GLES20.GL_VERTEX_SHADER, vs);
 				int fragmentShader = loadShader(GLES20.GL_FRAGMENT_SHADER, fs);
 				int program = GLES20.glCreateProgram();
@@ -193,7 +196,7 @@ public final class StripesService extends WallpaperService {
 					if (linkStatus[0] != GLES20.GL_TRUE) {
 						String error = GLES20.glGetProgramInfoLog(program);
 						GLES20.glDeleteProgram(program);
-						throw new RuntimeException(error);
+						throw new Exception(error);
 					}
 				}
 				return program;
@@ -208,7 +211,8 @@ public final class StripesService extends WallpaperService {
 			 *            Shader source code.
 			 * @return Loaded shader id.
 			 */
-			private final int loadShader(int shaderType, String source) {
+			private final int loadShader(int shaderType, String source)
+					throws Exception {
 				int shader = GLES20.glCreateShader(shaderType);
 				if (shader != 0) {
 					GLES20.glShaderSource(shader, source);
@@ -219,7 +223,7 @@ public final class StripesService extends WallpaperService {
 					if (compiled[0] == 0) {
 						String error = GLES20.glGetShaderInfoLog(shader);
 						GLES20.glDeleteShader(shader);
-						throw new RuntimeException(error);
+						throw new Exception(error);
 					}
 				}
 				return shader;
@@ -276,19 +280,19 @@ public final class StripesService extends WallpaperService {
 						stripe[0] = currentTime;
 						stripe[1] = 2000 + (long) (Math.random() * 2000);
 
-						for (int i = 0; i < 4; ++i) {
-							stripe[i * 2 + 2] = stripe[i * 2 + 10];
-							stripe[i * 2 + 10] = (long) (Math.random() * 4000) - 2000;
+						for (int i = 0; i < 8; i += 2) {
+							stripe[i + 2] = stripe[i + 10];
+							stripe[i + 10] = (long) (Math.random() * 4000) - 2000;
 						}
 					}
 
 					float t = (float) (currentTime - stripe[0]) / stripe[1];
 					t = t * t * (3 - 2 * t);
 
-					for (int i = 0; i < 4; ++i) {
-						ctrlPts[2 * i + 0] = (stripe[2 * i + 2] + (stripe[2 * i + 10] - stripe[2 * i + 2])
+					for (int i = 0; i < 8; i += 2) {
+						ctrlPts[i + 0] = (stripe[i + 2] + (stripe[i + 10] - stripe[i + 2])
 								* t) / 1000f;
-						ctrlPts[2 * i + 1] = stripe[2 * i + 3] / 1000f;
+						ctrlPts[i + 1] = stripe[i + 3] / 1000f;
 					}
 					GLES20.glUniform2fv(uControlPts, 4, ctrlPts, 0);
 					GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0,
@@ -311,12 +315,9 @@ public final class StripesService extends WallpaperService {
 			@Override
 			public final void onSurfaceChanged(GL10 unused, int width,
 					int height) {
-				mWidth = width;
-				mHeight = height;
-
-				GLES20.glViewport(0, 0, mWidth, mHeight);
-				mAspectRatio[0] = (float) Math.min(mWidth, mHeight) / mWidth;
-				mAspectRatio[1] = (float) Math.min(mWidth, mHeight) / mHeight;
+				GLES20.glViewport(0, 0, width, height);
+				mAspectRatio[0] = (float) Math.min(width, height) / width;
+				mAspectRatio[1] = (float) Math.min(width, height) / height;
 			}
 
 			@Override
